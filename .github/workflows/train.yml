@@ -1,0 +1,60 @@
+name: train
+
+on:
+  push:
+    branches: [main]
+    paths: ["train.py", "requirements.txt", ".github/workflows/train.yml"]
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Modeli ya msingi (Hugging Face)"
+        default: "Qwen/Qwen2.5-1.5B-Instruct"
+      samples:
+        description: "Idadi ya sampuli"
+        default: "500"
+      max_len:
+        description: "Urefu wa juu wa tokens"
+        default: "2048"
+
+concurrency:
+  group: train-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MODEL: ${{ inputs.model || 'Qwen/Qwen2.5-1.5B-Instruct' }}
+  SAMPLES: ${{ inputs.samples || '500' }}
+  MAX_LEN: ${{ inputs.max_len || '2048' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m py_compile train.py
+      - run: pip install datasets transformers peft trl torch --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: python train.py --dry_run --samples 20 --model Qwen/Qwen2.5-0.5B-Instruct
+
+  train:
+    # Inaanza yenyewe baada ya check kupita (kila push kwenye main)
+    needs: check
+    runs-on: [self-hosted, gpu]
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -r requirements.txt
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      - run: python train.py --model "$MODEL" --samples "$SAMPLES" --max_len "$MAX_LEN" --out out-lora
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lora-adapter
+          path: out-lora
+          retention-days: 14
+          
