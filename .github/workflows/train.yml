@@ -8,13 +8,13 @@ on:
     inputs:
       model:
         description: "Modeli ya msingi (Hugging Face)"
-        default: "Qwen/Qwen2.5-1.5B-Instruct"
+        default: "Qwen/Qwen2.5-0.5B-Instruct"
       samples:
         description: "Idadi ya sampuli"
-        default: "500"
+        default: "30"
       max_len:
         description: "Urefu wa juu wa tokens"
-        default: "2048"
+        default: "1024"
 
 concurrency:
   group: train-${{ github.ref }}
@@ -22,9 +22,9 @@ concurrency:
 
 env:
   DATASET: ${{ vars.DATASET || 'MoreThought/Fable-5.1-Max-Reasoning-Filtered-10000x' }}
-  MODEL: ${{ inputs.model || 'Qwen/Qwen2.5-1.5B-Instruct' }}
-  SAMPLES: ${{ inputs.samples || '500' }}
-  MAX_LEN: ${{ inputs.max_len || '2048' }}
+  MODEL: ${{ inputs.model || 'Qwen/Qwen2.5-0.5B-Instruct' }}
+  SAMPLES: ${{ inputs.samples || '30' }}
+  MAX_LEN: ${{ inputs.max_len || '1024' }}
 
 jobs:
   check:
@@ -43,16 +43,20 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
 
   train:
-    # Inaanza yenyewe baada ya check kupita (kila push kwenye main)
+    # Inatumia CPU ya bure ya GitHub (polepole): sampuli chache tu
     needs: check
-    runs-on: [self-hosted, gpu]
-    timeout-minutes: 360
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
-      - run: pip install -r requirements.txt
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install datasets transformers peft trl torch accelerate --extra-index-url https://download.pytorch.org/whl/cpu
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      - run: python train.py --dataset "$DATASET" --model "$MODEL" --samples "$SAMPLES" --max_len "$MAX_LEN" --out out-lora
+      - run: python train.py --dataset "$DATASET" --model "$MODEL" --samples "$SAMPLES" --max_len "$MAX_LEN" --cpu --out out-lora
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
       - uses: actions/upload-artifact@v4
