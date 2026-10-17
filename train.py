@@ -23,6 +23,7 @@ p.add_argument("--lr", type=float, default=2e-4)
 p.add_argument("--out", default="out-lora")
 p.add_argument("--no_4bit", action="store_true", help="zima QLoRA (inahitaji VRAM zaidi)")
 p.add_argument("--dry_run", action="store_true", help="andaa data tu, bila kufundisha (hakuna GPU)")
+p.add_argument("--cpu", action="store_true", help="tumia CPU tu (polepole sana, kwa majaribio madogo)")
 args = p.parse_args()
 
 tok = AutoTokenizer.from_pretrained(args.model)
@@ -63,7 +64,7 @@ if args.dry_run:
     raise SystemExit(0)
 
 quant = None
-if not args.no_4bit:
+if not args.no_4bit and not args.cpu:
     quant = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_quant_type="nf4",
@@ -73,8 +74,8 @@ if not args.no_4bit:
 model = AutoModelForCausalLM.from_pretrained(
     args.model,
     quantization_config=quant,
-    torch_dtype=torch.bfloat16,
-    device_map="auto",
+    torch_dtype=torch.float32 if args.cpu else torch.bfloat16,
+    device_map=None if args.cpu else "auto",
 )
 
 lora = LoraConfig(
@@ -95,7 +96,8 @@ cfg = SFTConfig(
     warmup_ratio=0.03,
     logging_steps=5,
     save_strategy="epoch",
-    bf16=True,
+    bf16=not args.cpu,
+    use_cpu=args.cpu,
     gradient_checkpointing=True,
     max_length=args.max_len,
     dataset_text_field="text",
