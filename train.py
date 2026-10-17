@@ -1,6 +1,6 @@
 """
 LoRA/QLoRA fine-tuning kwa matumizi binafsi (kujifunza).
-Dataset: MoreThought/Fable-5.1-Max-Reasoning-Cleaned-10000x
+Dataset: MoreThought/Fable-5.1-Max-Reasoning-Filtered-10000x
 
 Tumia:  python train.py --model Qwen/Qwen2.5-1.5B-Instruct --samples 500
 """
@@ -15,7 +15,7 @@ from trl import SFTConfig, SFTTrainer
 
 p = argparse.ArgumentParser()
 p.add_argument("--model", default="Qwen/Qwen2.5-1.5B-Instruct", help="modeli ya msingi (base)")
-p.add_argument("--dataset", default="MoreThought/Fable-5.1-Max-Reasoning-Cleaned-10000x")
+p.add_argument("--dataset", default="MoreThought/Fable-5.1-Max-Reasoning-Filtered-10000x")
 p.add_argument("--samples", type=int, default=500, help="anza na kidogo ili kujaribu")
 p.add_argument("--max_len", type=int, default=4096)
 p.add_argument("--epochs", type=int, default=1)
