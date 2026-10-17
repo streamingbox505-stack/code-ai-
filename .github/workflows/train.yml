@@ -21,6 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  DATASET: ${{ vars.DATASET || 'MoreThought/Fable-5.1-Max-Reasoning-Filtered-10000x' }}
   MODEL: ${{ inputs.model || 'Qwen/Qwen2.5-1.5B-Instruct' }}
   SAMPLES: ${{ inputs.samples || '500' }}
   MAX_LEN: ${{ inputs.max_len || '2048' }}
@@ -37,7 +38,9 @@ jobs:
           cache: pip
       - run: python -m py_compile train.py
       - run: pip install datasets transformers peft trl torch --extra-index-url https://download.pytorch.org/whl/cpu
-      - run: python train.py --dry_run --samples 20 --model Qwen/Qwen2.5-0.5B-Instruct
+      - run: python train.py --dry_run --samples 20 --model Qwen/Qwen2.5-0.5B-Instruct --dataset "$DATASET"
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
 
   train:
     # Inaanza yenyewe baada ya check kupita (kila push kwenye main)
@@ -49,7 +52,7 @@ jobs:
       - run: pip install -r requirements.txt
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      - run: python train.py --model "$MODEL" --samples "$SAMPLES" --max_len "$MAX_LEN" --out out-lora
+      - run: python train.py --dataset "$DATASET" --model "$MODEL" --samples "$SAMPLES" --max_len "$MAX_LEN" --out out-lora
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
       - uses: actions/upload-artifact@v4
@@ -57,4 +60,3 @@ jobs:
           name: lora-adapter
           path: out-lora
           retention-days: 14
-          
